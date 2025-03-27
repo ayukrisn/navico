@@ -1,8 +1,9 @@
 <script setup>
 import 'leaflet/dist/leaflet.css'
 
-import { onMounted, watch, ref, defineProps } from 'vue'
+import {onBeforeUnmount,  onMounted, watch, ref, defineProps } from 'vue'
 import { useMarkerToolStore } from '@/stores/markerToolStore'
+import { useLineToolStore } from '@/stores/lineToolStore'
 import L from 'leaflet'
 
 const props = defineProps({
@@ -10,11 +11,14 @@ const props = defineProps({
 })
 
 const markerToolStore = useMarkerToolStore()
+const lineToolStore = useLineToolStore()
 
 const mapContainer = ref(null) // ref(null) ensures the element is ready after mounting.
 let map
 let currentLayer
 const markers = ref([]) // Store markers
+let currentPolyline = null
+let currentPolylinePoints = [] // Stores the clicked points
 
 // the tiles
 var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -115,15 +119,26 @@ onMounted(() => {
   map.addControl(new CustomZoom())
 
   // Handle map click event
-  map.on('click', (e) => {
-    // If adding marker is true, then put marker
-    if (markerToolStore.isAddingMarker) {
-      addMarker(e.latlng)
-    }
-  })
+  map.on('click', handleMapClick)
+  document.addEventListener('keydown', handleKeyPress)
 })
 
-// Marker
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeyPress)
+})
+
+// Handle map click
+const handleMapClick = (e) => {
+  if (markerToolStore.isAddingMarker) {
+    addMarker(e.latlng)
+  }
+
+  if (lineToolStore.isAddingLine) {
+    addPolylinePoint(e.latlng)
+  }
+}
+
+// Marker function
 const addMarker = (latlng) => {
   const marker = L.marker(latlng).addTo(map)
 
@@ -155,6 +170,39 @@ watch(
         console.warn('Dragging is not available for this marker:', marker)
       }
     })
+  },
+)
+
+// Add polyline points
+const addPolylinePoint = (latlng) => {
+  currentPolylinePoints.push(latlng)
+
+  if (!currentPolyline) {
+    currentPolyline = L.polyline(currentPolylinePoints, { color: 'blue' }).addTo(map)
+  } else {
+    currentPolyline.setLatLngs(currentPolylinePoints)
+  }
+}
+
+// Handle Enter key press to finalize polyline
+const handleKeyPress = (e) => {
+  if (e.key === 'Enter' && lineToolStore.isAddingLine) {
+    console.log('Finalizing polyline:', currentPolylinePoints)
+
+    lineToolStore.isAddingLine = false // Stop adding points
+    currentPolyline = null
+    currentPolylinePoints = []
+  }
+}
+
+// Watch for isAddingLine changes
+watch(
+  () => lineToolStore.isAddingLine,
+  (isAdding) => {
+    if (!isAdding && currentPolyline) {
+      currentPolyline = null
+      currentPolylinePoints = []
+    }
   },
 )
 

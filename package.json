@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "@fortawesome/vue-fontawesome": "^3.0.8",
+    "@geoman-io/leaflet-geoman-free": "^2.18.3",
     "@primeuix/themes": "^1.0.0",
     "leaflet": "^1.9.4",
+    "oh-vue-icons": "^1.0.0-rc3",
     "pinia": "^3.0.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.2",
