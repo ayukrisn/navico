@@ -1,7 +1,7 @@
 <script setup>
 import 'leaflet/dist/leaflet.css'
 
-import {onBeforeUnmount,  onMounted, watch, ref, defineProps } from 'vue'
+import { onBeforeUnmount, onMounted, watch, ref, defineProps } from 'vue'
 import { useMarkerToolStore } from '@/stores/markerToolStore'
 import { useLineToolStore } from '@/stores/lineToolStore'
 import L from 'leaflet'
@@ -73,6 +73,9 @@ onMounted(() => {
   const defaultMap = props.selectedMap || 'OpenStreetMap'
   currentLayer = baseMap[defaultMap].addTo(map)
 
+  // Load saved markers from localStorage
+  loadMarkersFromStore()
+
   // Custom Zoom Control
   var CustomZoom = L.Control.extend({
     options: {
@@ -130,7 +133,8 @@ onBeforeUnmount(() => {
 // Handle map click
 const handleMapClick = (e) => {
   if (markerToolStore.isAddingMarker) {
-    addMarker(e.latlng)
+    const newMarker = markerToolStore.addMarker(e.latlng) // Get the returned marker
+    addMarker(newMarker) // Add to Leaflet map
   }
 
   if (lineToolStore.isAddingLine) {
@@ -138,13 +142,22 @@ const handleMapClick = (e) => {
   }
 }
 
+// Load markers function
+const loadMarkersFromStore = () => {
+  markerToolStore.markers.forEach((marker) => {
+    addMarker(marker)
+  })
+}
+
 // Marker function
-const addMarker = (latlng) => {
-  const marker = L.marker(latlng).addTo(map)
+const addMarker = (markerData) => {
+  const marker = L.marker(markerData.latlng, { draggable: true }).addTo(map)
+
 
   // Enable dragging if isEditingMarker is active
   marker.on('dragend', (event) => {
     const newLatLng = event.target.getLatLng()
+    markerToolStore.updateMarker(markerData.id, newLatLng) // Update by ID
     console.log('Marker moved to:', newLatLng)
   })
 
@@ -152,20 +165,29 @@ const addMarker = (latlng) => {
   marker.on('click', () => {
     if (markerToolStore.isDeletingMarker) {
       map.removeLayer(marker)
-      markers.value = markers.value.filter((m) => m !== marker)
+      markerToolStore.removeMarker(markerData.id) // Remove by ID
     }
   })
 
-  markers.value.push(marker)
+  markers.value.push({ id: markerData.id, marker })
 }
+
+// const removeMarker = (marker) => {
+//   const index = markers.value.findIndex((m) => m.getLatLng().equals(marker.getLatLng()))
+//   if (index !== -1) {
+//     markerToolStore.removeMarker(index)
+//     map.removeLayer(marker)
+//     markers.value.splice(index, 1)
+//   }
+// }
 
 // Watch for editing mode changes
 watch(
   () => markerToolStore.isEditingMarker,
   (newEditingState) => {
     markers.value.forEach((marker) => {
-      if (marker.dragging) {
-        marker.dragging[newEditingState ? 'enable' : 'disable']()
+      if (marker.marker.dragging) {
+        marker.marker.dragging[newEditingState ? 'enable' : 'disable']()
       } else {
         console.warn('Dragging is not available for this marker:', marker)
       }

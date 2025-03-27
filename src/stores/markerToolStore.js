@@ -7,6 +7,7 @@ export const useMarkerToolStore = defineStore('markerTool', {
     isAddingMarker: false,
     isDeletingMarker: false,
     isEditingMarker: false,
+    markers: JSON.parse(localStorage.getItem('markers')) || [], // Load saved markers from localStorage
   }),
   actions: {
     toggleTools() {
@@ -27,5 +28,30 @@ export const useMarkerToolStore = defineStore('markerTool', {
       this.isAddingMarker = false;
       this.isDeletingMarker = false;
     },
+    addMarker(latlng) {
+      const newMarker = { id: Date.now(), latlng } // Assign unique ID
+      this.markers.push(newMarker);
+      this.saveMarkersToStorage() // Save to localStorage
+      return newMarker
+    },
+    removeMarker(id) {
+      this.markers = this.markers.filter((m) => m.id !== id)
+      this.saveMarkersToStorage() // Save updated list
+    },
+    loadMarkers() {
+      this.markers = JSON.parse(localStorage.getItem('markers')) || [];
+    },
+    updateMarker(id, newLatLng) {
+      console.log("Update marker is called")
+      const marker = this.markers.find((m) => m.id === id)
+      if (marker) {
+        marker.latlng = newLatLng
+        this.saveMarkersToStorage()
+        console.log("Marker is saved")
+      }
+    },
+    saveMarkersToStorage() {
+      localStorage.setItem('markers', JSON.stringify(this.markers))
+    }
   },
 });
