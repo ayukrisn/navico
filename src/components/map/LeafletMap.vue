@@ -1,7 +1,7 @@
 <script setup>
 import 'leaflet/dist/leaflet.css'
 
-import { onBeforeUnmount, onMounted, watch, ref, defineProps } from 'vue'
+import { onBeforeUnmount, onMounted, watch, ref } from 'vue'
 import { useMarkerToolStore } from '@/stores/markerToolStore'
 import { useLineToolStore } from '@/stores/lineToolStore'
 import L from 'leaflet'
@@ -161,10 +161,13 @@ const loadMarkersFromStore = () => {
 
 // Add marker
 const addMarker = (markerData) => {
-  const marker = L.marker(markerData.latlng, { draggable: true }).addTo(map)
+  const marker = L.marker(markerData.latlng, { draggable: markerToolStore.isEditingMarker }).addTo(
+    map,
+  )
 
   // Enable dragging if isEditingMarker is active
   marker.on('dragend', (event) => {
+    console.log(markerToolStore.isEditingMarker)
     const newLatLng = event.target.getLatLng()
     markerToolStore.updateMarker(markerData.id, newLatLng) // Update by ID
     console.log('Marker moved to:', newLatLng)
@@ -185,11 +188,17 @@ const addMarker = (markerData) => {
 watch(
   () => markerToolStore.isEditingMarker,
   (newEditingState) => {
-    markers.value.forEach((marker) => {
-      if (marker.marker.dragging) {
-        marker.marker.dragging[newEditingState ? 'enable' : 'disable']()
+    markers.value.forEach((markerObj) => {
+      const marker = markerObj.marker
+      if (marker.dragging) {
+        if (newEditingState) {
+          marker.dragging.enable()
+        } else {
+          marker.dragging.disable()
+        }
+        console.log(`Marker ID ${markerObj.id} dragging: ${marker.dragging._enabled}`)
       } else {
-        console.warn('Dragging is not available for this marker:', marker)
+        console.warn('Dragging is not available or not initialized for this marker:', markerObj)
       }
     })
   },
