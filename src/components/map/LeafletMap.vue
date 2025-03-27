@@ -2,16 +2,14 @@
 import 'leaflet/dist/leaflet.css'
 
 import { onMounted, watch, ref, defineProps } from 'vue'
+import { useMarkerToolStore } from '@/stores/markerToolStore'
 import L from 'leaflet'
 
 const props = defineProps({
   selectedMap: String, // Receives selected map type from parent
-  isAddingMarker: Boolean,
-  isDeletingMarker: Boolean,
-  isEditingMarker: Boolean,
 })
 
-const emit = defineEmits(['markerAdded', 'markerDeleted'])
+const markerToolStore = useMarkerToolStore()
 
 const mapContainer = ref(null) // ref(null) ensures the element is ready after mounting.
 let map
@@ -60,27 +58,6 @@ const baseMap = {
   'Carto Light': cartoLight,
   'Google Satellite': googleSatellite,
   'Google Hybrid': googleHybrid,
-}
-
-// Marker tools
-const toggleAddMarker = (status) => {
-  isAddingMarker = status
-  if (isAddingMarker) {
-    console.log('Add Marker Mode: ON')
-    isDeletingMarker.value = false
-  } else {
-    console.log('Add Marker Mode: OFF')
-  }
-}
-
-const toggleDeleteMarker = (status) => {
-  isDeletingMarker.value = status
-  if (isDeletingMarker) {
-    console.log('Delete Marker Mode: ON')
-    isAddingMarker.value = false // Disable add mode if enabling delete mode
-  } else {
-    console.log('Delete Marker Mode: OFF')
-  }
 }
 
 onMounted(() => {
@@ -140,7 +117,7 @@ onMounted(() => {
   // Handle map click event
   map.on('click', (e) => {
     // If adding marker is true, then put marker
-    if (props.isAddingMarker) {
+    if (markerToolStore.isAddingMarker) {
       addMarker(e.latlng)
     }
   })
@@ -158,7 +135,7 @@ const addMarker = (latlng) => {
 
   // Add event listener to handle marker deletion
   marker.on('click', () => {
-    if (props.isDeletingMarker) {
+    if (markerToolStore.isDeletingMarker) {
       map.removeLayer(marker)
       markers.value = markers.value.filter((m) => m !== marker)
     }
@@ -169,10 +146,14 @@ const addMarker = (latlng) => {
 
 // Watch for editing mode changes
 watch(
-  () => props.isEditingMarker,
+  () => markerToolStore.isEditingMarker,
   (newEditingState) => {
     markers.value.forEach((marker) => {
-      marker.dragging[newEditingState ? 'enable' : 'disable']()
+      if (marker.dragging) {
+        marker.dragging[newEditingState ? 'enable' : 'disable']()
+      } else {
+        console.warn('Dragging is not available for this marker:', marker)
+      }
     })
   },
 )

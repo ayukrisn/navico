@@ -1,24 +1,35 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// import HomeView from '@/views/HomeView.vue'
+import { useAuthStore } from '@/stores/authStore'
+import AuthLayout from '@/layouts/AuthLayout.vue'
+import Login from '@/views/LoginView.vue'
+import Register from '@/views/RegisterView.vue'
 import MapView from '@/views/MapView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
-      name: 'map',
-      component: MapView,
+      path: '/auth',
+      component: AuthLayout, // Wrap Login & Register inside this layout
+      children: [
+        { path: 'login', component: Login },
+        { path: 'register', component: Register },
+      ],
     },
-    // {
-    //   path: '/map',
-    //   name: 'map',
-    //   // route level code-splitting
-    //   // this generates a separate chunk (About.[hash].js) for this route
-    //   // which is lazy-loaded when the route is visited.
-    //   component: () => import('../views/MapView.vue'),
-    // },
+    { path: '/', name: 'map', component: MapView, },
   ],
+})
+
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore()
+
+  if ((to.path === '/auth/login' || to.path === '/auth/register') && authStore.isAuthenticated) {
+    next('/') // Redirect logged-in users to home
+    console.log(authStore.isAuthenticated)
+  } else {
+    next() // Allow navigation
+    console.log(authStore.isAuthenticated)
+  }
 })
 
 export default router

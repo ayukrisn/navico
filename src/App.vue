@@ -1,6 +1,5 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
-import Sidebar from './components/Sidebar.vue'
 </script>
 
 <template>
@@ -32,5 +31,4 @@ import Sidebar from './components/Sidebar.vue'
   height: 100%;
   overflow-x: hidden;
 } */
-
 </style>
