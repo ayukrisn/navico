@@ -27,7 +27,7 @@ const router = useRouter()
 
 const handleRegister = () => {
   authStore.register({ name: name.value, email: email.value }) // Simulate register
-  router.push('/') // Redirect to home
+  router.push('/auth/login') // Redirect to home
 }
 </script>
 

@@ -20,7 +20,9 @@ const markers = ref([]) // Store markers
 let currentPolyline = null
 let currentPolylinePoints = [] // Stores the clicked points
 
-// the tiles
+/***
+ * TILES
+ */
 var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   attribution: '© OpenStreetMap',
@@ -54,7 +56,9 @@ var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={
   attribution: '&copy; Google',
 })
 
-//Map layer options
+/***
+ * MAP LAYER OPTIONS
+ */
 const baseMap = {
   OpenStreetMap: osm,
   'OpenStreetMap HOT': osmHOT,
@@ -64,6 +68,9 @@ const baseMap = {
   'Google Hybrid': googleHybrid,
 }
 
+/***
+ * ON MOUNTED
+ */
 onMounted(() => {
   // mapContainer.value gives access to the actual DOM element.
   // This avoids issues where Leaflet tries to attach to a null element.
@@ -130,7 +137,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleKeyPress)
 })
 
-// Handle map click
+/***
+ * MARKER FUNCTIONS
+ */
+// handle marker click
 const handleMapClick = (e) => {
   if (markerToolStore.isAddingMarker) {
     const newMarker = markerToolStore.addMarker(e.latlng) // Get the returned marker
@@ -149,10 +159,9 @@ const loadMarkersFromStore = () => {
   })
 }
 
-// Marker function
+// Add marker
 const addMarker = (markerData) => {
   const marker = L.marker(markerData.latlng, { draggable: true }).addTo(map)
-
 
   // Enable dragging if isEditingMarker is active
   marker.on('dragend', (event) => {
@@ -171,15 +180,6 @@ const addMarker = (markerData) => {
 
   markers.value.push({ id: markerData.id, marker })
 }
-
-// const removeMarker = (marker) => {
-//   const index = markers.value.findIndex((m) => m.getLatLng().equals(marker.getLatLng()))
-//   if (index !== -1) {
-//     markerToolStore.removeMarker(index)
-//     map.removeLayer(marker)
-//     markers.value.splice(index, 1)
-//   }
-// }
 
 // Watch for editing mode changes
 watch(

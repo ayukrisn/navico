@@ -16,19 +16,19 @@ const router = createRouter({
         { path: 'register', component: Register },
       ],
     },
-    { path: '/', name: 'map', component: MapView, },
+    { path: '/', name: 'map', component: MapView, meta: { requiresAuth: true }},
   ],
 })
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
-  if ((to.path === '/auth/login' || to.path === '/auth/register') && authStore.isAuthenticated) {
+  if (!authStore.isAuthenticated && to.meta.requiresAuth) {
+    next('/auth/login') // Redirect if not authenticated
+  } else if (authStore.isAuthenticated && (to.path === '/auth/login' || to.path === '/auth/register')) {
     next('/') // Redirect logged-in users to home
-    console.log(authStore.isAuthenticated)
   } else {
     next() // Allow navigation
-    console.log(authStore.isAuthenticated)
   }
 })
 
