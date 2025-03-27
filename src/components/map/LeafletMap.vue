@@ -8,6 +8,7 @@ const props = defineProps({
   selectedMap: String, // Receives selected map type from parent
   isAddingMarker: Boolean,
   isDeletingMarker: Boolean,
+  isEditingMarker: Boolean,
 })
 
 const emit = defineEmits(['markerAdded', 'markerDeleted'])
@@ -149,6 +150,12 @@ onMounted(() => {
 const addMarker = (latlng) => {
   const marker = L.marker(latlng).addTo(map)
 
+  // Enable dragging if isEditingMarker is active
+  marker.on('dragend', (event) => {
+    const newLatLng = event.target.getLatLng()
+    console.log('Marker moved to:', newLatLng)
+  })
+
   // Add event listener to handle marker deletion
   marker.on('click', () => {
     if (props.isDeletingMarker) {
@@ -159,6 +166,16 @@ const addMarker = (latlng) => {
 
   markers.value.push(marker)
 }
+
+// Watch for editing mode changes
+watch(
+  () => props.isEditingMarker,
+  (newEditingState) => {
+    markers.value.forEach((marker) => {
+      marker.dragging[newEditingState ? 'enable' : 'disable']()
+    })
+  },
+)
 
 // Watch for map switch updates
 watch(
