@@ -1,4 +1,3 @@
-
 <script setup>
 import 'leaflet/dist/leaflet.css'
 
@@ -7,22 +6,16 @@ import L from 'leaflet'
 
 const props = defineProps({
   selectedMap: String, // Receives selected map type from parent
+  isAddingMarker: Boolean,
+  isDeletingMarker: Boolean,
 })
+
+const emit = defineEmits(['markerAdded', 'markerDeleted'])
 
 const mapContainer = ref(null) // ref(null) ensures the element is ready after mounting.
 let map
 let currentLayer
-let isAddingMarker = false
-let markers = [] // Store added markers
-
-const toggleAddMarker = (status) => {
-  isAddingMarker = status
-  if (isAddingMarker) {
-    console.log('Add Marker Mode: ON')
-  } else {
-    console.log('Add Marker Mode: OFF')
-  }
-}
+const markers = ref([]) // Store markers
 
 // the tiles
 var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -68,10 +61,31 @@ const baseMap = {
   'Google Hybrid': googleHybrid,
 }
 
+// Marker tools
+const toggleAddMarker = (status) => {
+  isAddingMarker = status
+  if (isAddingMarker) {
+    console.log('Add Marker Mode: ON')
+    isDeletingMarker.value = false
+  } else {
+    console.log('Add Marker Mode: OFF')
+  }
+}
+
+const toggleDeleteMarker = (status) => {
+  isDeletingMarker.value = status
+  if (isDeletingMarker) {
+    console.log('Delete Marker Mode: ON')
+    isAddingMarker.value = false // Disable add mode if enabling delete mode
+  } else {
+    console.log('Delete Marker Mode: OFF')
+  }
+}
+
 onMounted(() => {
   // mapContainer.value gives access to the actual DOM element.
   // This avoids issues where Leaflet tries to attach to a null element.
-  map = L.map(mapContainer.value, { zoomControl: false }).setView([-8.658420, 115.213969], 13)
+  map = L.map(mapContainer.value, { zoomControl: false }).setView([-8.65842, 115.213969], 13)
 
   // Default map layer
   const defaultMap = props.selectedMap || 'OpenStreetMap'
@@ -86,21 +100,21 @@ onMounted(() => {
     onAdd: function (map) {
       var container = L.DomUtil.create('div', 'custom-zoom') // Create a div for the buttons
 
-       // Zoom In Button
-    let zoomIn = L.DomUtil.create('button', 'btn custom-zoom-in', container)
-    zoomIn.innerHTML = '<i class="pi pi-plus"></i>'
-    zoomIn.onclick = function (e) {
-      e.preventDefault()
-      map.zoomIn()
-    }
+      // Zoom In Button
+      let zoomIn = L.DomUtil.create('button', 'btn custom-zoom-in', container)
+      zoomIn.innerHTML = '<i class="pi pi-plus"></i>'
+      zoomIn.onclick = function (e) {
+        e.preventDefault()
+        map.zoomIn()
+      }
 
-    // Zoom Out Button
-    let zoomOut = L.DomUtil.create('button', 'btn custom-zoom-out', container)
-    zoomOut.innerHTML = '<i class="pi pi-minus"></i>'
-    zoomOut.onclick = function (e) {
-      e.preventDefault()
-      map.zoomOut()
-    }
+      // Zoom Out Button
+      let zoomOut = L.DomUtil.create('button', 'btn custom-zoom-out', container)
+      zoomOut.innerHTML = '<i class="pi pi-minus"></i>'
+      zoomOut.onclick = function (e) {
+        e.preventDefault()
+        map.zoomOut()
+      }
 
       // Click Events
       L.DomEvent.on(zoomIn, 'click', function (e) {
@@ -122,19 +136,29 @@ onMounted(() => {
   // Add Custom Zoom Control to Map
   map.addControl(new CustomZoom())
 
-   // Handle map click event
-   map.on('click', (e) => {
+  // Handle map click event
+  map.on('click', (e) => {
     // If adding marker is true, then put marker
-    if (isAddingMarker) {
-      const { lat, lng } = e.latlng
-      const marker = L.marker([lat, lng], {
-        draggable: true,
-      }).addTo(map)
-      markers.push(marker)
-      console.log(`Marker added at: ${lat}, ${lng}`)
+    if (props.isAddingMarker) {
+      addMarker(e.latlng)
     }
   })
 })
+
+// Marker
+const addMarker = (latlng) => {
+  const marker = L.marker(latlng).addTo(map)
+
+  // Add event listener to handle marker deletion
+  marker.on('click', () => {
+    if (props.isDeletingMarker) {
+      map.removeLayer(marker)
+      markers.value = markers.value.filter((m) => m !== marker)
+    }
+  })
+
+  markers.value.push(marker)
+}
 
 // Watch for map switch updates
 watch(
@@ -150,9 +174,6 @@ watch(
     }
   },
 )
-
-// Expose toggle function to parent
-defineExpose({ toggleAddMarker })
 </script>
 
 <template>
