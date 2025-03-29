@@ -140,11 +140,10 @@ onBeforeUnmount(() => {
 /***
  * MARKER FUNCTIONS
  */
-// handle marker click
+// handle map click
 const handleMapClick = (e) => {
   if (markerToolStore.isAddingMarker) {
-    const newMarker = markerToolStore.addMarker(e.latlng) // Get the returned marker
-    addMarker(newMarker) // Add to Leaflet map
+    addTemporaryMarker(e.latlng) // add TEMPORARY marker
   }
 
   if (lineToolStore.isAddingLine) {
@@ -154,12 +153,19 @@ const handleMapClick = (e) => {
 
 // Load markers function
 const loadMarkersFromStore = () => {
+  if (markers) {
+    // Remove all existing markers from the map
+    markers.value.forEach(({ marker }) => {
+      map.removeLayer(marker)
+    })
+  }
+
   markerToolStore.markers.forEach((marker) => {
     addMarker(marker)
   })
 }
 
-// Add marker
+// Add marker THAT HAS ALREADY BEEN SAVED
 const addMarker = (markerData) => {
   const marker = L.marker(markerData.latlng, { draggable: markerToolStore.isEditingMarker }).addTo(
     map,
@@ -178,10 +184,56 @@ const addMarker = (markerData) => {
     if (markerToolStore.isDeletingMarker) {
       map.removeLayer(marker)
       markerToolStore.removeMarker(markerData.id) // Remove by ID
+    } else {
+      marker
+        .bindPopup(
+          `
+      <p>Marker saved at ${markerData.latlng.lat.toFixed(5)}, ${markerData.latlng.lng.toFixed(5)}</p>
+    `,
+        )
+        .openPopup()
     }
   })
 
   markers.value.push({ id: markerData.id, marker })
+}
+
+// Add TEMPORARY marker
+const addTemporaryMarker = (latlng) => {
+  const marker = L.marker(latlng, { draggable: markerToolStore.isEditingMarker }).addTo(map)
+
+  marker.on('dragend', (event) => {
+    const newLatLng = event.target.getLatLng()
+    marker.setLatLng(newLatLng) // Update position without saving
+  })
+
+  marker.on('click', () => {
+    if (markerToolStore.isDeletingMarker) {
+      map.removeLayer(marker)
+    } else {
+      marker
+        .bindPopup(
+          `
+      <p>Temporary Marker at ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}</p>
+      <button id="saveMarkerBtn">Save</button>
+    `,
+        )
+        .openPopup()
+
+      // Add click event for Save button
+      setTimeout(() => {
+        const saveBtn = document.getElementById('saveMarkerBtn')
+        if (saveBtn) {
+          saveBtn.onclick = () => {
+            console.log('test')
+            markerToolStore.addMarker(latlng)
+            loadMarkersFromStore()
+            map.removeLayer(marker)
+          }
+        }
+      }, 0)
+    }
+  })
 }
 
 // Watch for editing mode changes
