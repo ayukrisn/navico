@@ -17,6 +17,7 @@ const mapContainer = ref(null) // ref(null) ensures the element is ready after m
 let map
 let currentLayer
 const markers = ref([]) // Store markers
+const temporaryMarkers = ref([])
 const markerLayer = L.layerGroup()
 
 let currentPolyline = null
@@ -182,12 +183,15 @@ const addMarker = (markerData) => {
   const marker = L.marker(markerData.latlng, { draggable: markerToolStore.isEditingMarker }).addTo(
     map,
   )
-  marker.bindPopup(`
+  const updatePopupContent = () => {
+    const popupContent = `
     <h3><b>${markerData.title}</b></h3>
     <p>${markerData.description}</p>
     <hr>
     <p>Marker saved at ${markerData.latlng.lat.toFixed(5)}, ${markerData.latlng.lng.toFixed(5)}</p>
-  `)
+  `
+    marker.bindPopup(popupContent).openPopup()
+  }
 
   // Enable dragging if isEditingMarker is active
   marker.on('dragend', (event) => {
@@ -195,6 +199,7 @@ const addMarker = (markerData) => {
     const newLatLng = event.target.getLatLng()
     markerToolStore.updateMarker(markerData.id, newLatLng) // Update by ID
     console.log('Marker moved to:', newLatLng)
+    updatePopupContent()
   })
 
   // Add event listener to handle marker deletion
@@ -204,10 +209,10 @@ const addMarker = (markerData) => {
         map.removeLayer(marker)
         markerToolStore.removeMarker(markerData.id) // Remove by ID
       } else {
-        marker.openPopup()
+        updatePopupContent()
       }
     } else {
-      marker.openPopup()
+      updatePopupContent()
     }
   })
 
@@ -218,27 +223,30 @@ const addMarker = (markerData) => {
 // Add TEMPORARY marker
 const addTemporaryMarker = (latlng) => {
   const marker = L.marker(latlng, { draggable: markerToolStore.isEditingMarker }).addTo(map)
+  // Function to update the pop-up content
+  const updatePopupContent = (marker) => {
+    const { lat, lng } = marker.getLatLng()
+    const popupContent = `
+      <p>Temporary Marker at ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+      <button id="saveMarkerBtn">Save</button>
+    `
+    marker.bindPopup(popupContent).openPopup()
+  }
 
   marker.on('dragend', (event) => {
     const newLatLng = event.target.getLatLng()
     marker.setLatLng(newLatLng) // Update position without saving
+    updatePopupContent(marker)
   })
 
   marker.on('click', () => {
     if (markerToolStore.isDeletingMarker) {
       if (confirm('Are you sure you want to delete this marker?')) {
         map.removeLayer(marker)
+        temporaryMarkers.value = temporaryMarkers.value.filter((m) => m !== marker)
       }
     } else {
-      marker
-        .bindPopup(
-          `
-      <p>Temporary Marker at ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}</p>
-      <button id="saveMarkerBtn">Save</button>
-    `,
-        )
-        .openPopup()
-
+      updatePopupContent(marker)
       // Add click event for Save button
       setTimeout(() => {
         const saveBtn = document.getElementById('saveMarkerBtn')
@@ -250,11 +258,13 @@ const addTemporaryMarker = (latlng) => {
             markerToolStore.addMarker(title, description, latlng)
             loadMarkersFromStore()
             map.removeLayer(marker)
+            temporaryMarkers.value = temporaryMarkers.value.filter((m) => m !== marker)
           }
         }
       }, 0)
     }
   })
+  temporaryMarkers.value.push(marker)
 }
 
 // Watch for editing mode changes
@@ -272,6 +282,12 @@ watch(
         console.log(`Marker ID ${markerObj.id} dragging: ${marker.dragging._enabled}`)
       } else {
         console.warn('Dragging is not available or not initialized for this marker:', markerObj)
+      }
+    })
+    // Update temporary markers
+    temporaryMarkers.value.forEach((marker) => {
+      if (marker.dragging) {
+        newEditingState ? marker.dragging.enable() : marker.dragging.disable()
       }
     })
   },
