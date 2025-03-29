@@ -17,6 +17,8 @@ const mapContainer = ref(null) // ref(null) ensures the element is ready after m
 let map
 let currentLayer
 const markers = ref([]) // Store markers
+const markerLayer = L.layerGroup()
+
 let currentPolyline = null
 let currentPolylinePoints = [] // Stores the clicked points
 
@@ -82,6 +84,7 @@ onMounted(() => {
 
   // Load saved markers from localStorage
   loadMarkersFromStore()
+  markerLayer.addTo(map)
 
   // Custom Zoom Control
   var CustomZoom = L.Control.extend({
@@ -153,24 +156,36 @@ const handleMapClick = (e) => {
 
 // Load markers function
 const loadMarkersFromStore = () => {
-  if (markers) {
-    // Remove all existing markers from the map
-    markers.value.forEach(({ marker }) => {
-      map.removeLayer(marker)
-    })
-  }
+  markerLayer.clearLayers()
+  markers.value = []
 
   markerToolStore.markers.forEach((marker) => {
     addMarker(marker)
   })
+
+  if (!map.hasLayer(markerLayer)) {
+    console.log('We touched this')
+    markerLayer.addTo(map)
+  }
 }
 
 // Add marker THAT HAS ALREADY BEEN SAVED
 const addMarker = (markerData) => {
+  if (
+    !markerData.latlng ||
+    typeof markerData.latlng.lat !== 'number' ||
+    typeof markerData.latlng.lng !== 'number'
+  ) {
+    console.warn('Invalid marker data:', markerData)
+    return
+  }
   const marker = L.marker(markerData.latlng, { draggable: markerToolStore.isEditingMarker }).addTo(
     map,
   )
   marker.bindPopup(`
+    <h3><b>${markerData.title}</b></h3>
+    <p>${markerData.description}</p>
+    <hr>
     <p>Marker saved at ${markerData.latlng.lat.toFixed(5)}, ${markerData.latlng.lng.toFixed(5)}</p>
   `)
 
@@ -185,14 +200,19 @@ const addMarker = (markerData) => {
   // Add event listener to handle marker deletion
   marker.on('click', () => {
     if (markerToolStore.isDeletingMarker) {
-      map.removeLayer(marker)
-      markerToolStore.removeMarker(markerData.id) // Remove by ID
+      if (confirm('Are you sure you want to delete this marker?')) {
+        map.removeLayer(marker)
+        markerToolStore.removeMarker(markerData.id) // Remove by ID
+      } else {
+        marker.openPopup()
+      }
     } else {
       marker.openPopup()
     }
   })
 
   markers.value.push({ id: markerData.id, marker })
+  markerLayer.addLayer(marker)
 }
 
 // Add TEMPORARY marker
@@ -206,7 +226,9 @@ const addTemporaryMarker = (latlng) => {
 
   marker.on('click', () => {
     if (markerToolStore.isDeletingMarker) {
-      map.removeLayer(marker)
+      if (confirm('Are you sure you want to delete this marker?')) {
+        map.removeLayer(marker)
+      }
     } else {
       marker
         .bindPopup(
@@ -223,7 +245,9 @@ const addTemporaryMarker = (latlng) => {
         if (saveBtn) {
           saveBtn.onclick = () => {
             console.log('test')
-            markerToolStore.addMarker(latlng)
+            const title = prompt('Set marker title')
+            const description = prompt('Set marker description')
+            markerToolStore.addMarker(title, description, latlng)
             loadMarkersFromStore()
             map.removeLayer(marker)
           }

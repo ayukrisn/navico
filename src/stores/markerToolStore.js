@@ -28,11 +28,10 @@ export const useMarkerToolStore = defineStore('markerTool', {
       this.isAddingMarker = false;
       this.isDeletingMarker = false;
     },
-    addMarker(latlng) {
-      const newMarker = { id: Date.now(), latlng } // Assign unique ID
+    addMarker(title, description, latlng) {
+      const newMarker = { id: Date.now(), title, description, latlng } // Assign unique ID
       this.markers.push(newMarker);
       this.saveMarkersToStorage() // Save to localStorage
-      return newMarker
     },
     removeMarker(id) {
       this.markers = this.markers.filter((m) => m.id !== id)
