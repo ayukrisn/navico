@@ -170,6 +170,9 @@ const addMarker = (markerData) => {
   const marker = L.marker(markerData.latlng, { draggable: markerToolStore.isEditingMarker }).addTo(
     map,
   )
+  marker.bindPopup(`
+    <p>Marker saved at ${markerData.latlng.lat.toFixed(5)}, ${markerData.latlng.lng.toFixed(5)}</p>
+  `)
 
   // Enable dragging if isEditingMarker is active
   marker.on('dragend', (event) => {
@@ -185,13 +188,7 @@ const addMarker = (markerData) => {
       map.removeLayer(marker)
       markerToolStore.removeMarker(markerData.id) // Remove by ID
     } else {
-      marker
-        .bindPopup(
-          `
-      <p>Marker saved at ${markerData.latlng.lat.toFixed(5)}, ${markerData.latlng.lng.toFixed(5)}</p>
-    `,
-        )
-        .openPopup()
+      marker.openPopup()
     }
   })
 
